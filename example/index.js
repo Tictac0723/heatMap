@@ -11,57 +11,93 @@ class MapExample extends React.Component {
       mapHidden: false,
       layerHidden: false,
       addressPoints: [],
-      radius: 4,
+      radius: 8,
       blur: 8,
       max: 0.5,
       limitAddressPoints: true,
       currentLat: '',
       currentLong: '',
-      currentIntensity: ''
+      currentIntensity: '',
+      currentZip: '',
+      newestCustomer: ''
     };
     this.handleLat = this.handleLat.bind(this);
     this.handleLong = this.handleLong.bind(this);
     this.handleIntensity = this.handleIntensity.bind(this);
+    this.handleCustomer = this.handleCustomer.bind(this);
     this.addLocation = this.addLocation.bind(this);
+  }
+  componentDidMount() {
+    var config = {
+      apiKey: "AIzaSyCywYzUpH-aiqk75zgbUbCKDtpoWxqkbnk",
+      authDomain: "heatmap-229017.firebaseapp.com",
+      databaseURL: "https://heatmap-229017.firebaseio.com",
+      projectId: "heatmap-229017",
+      storageBucket: "heatmap-229017.appspot.com",
+      messagingSenderId: "537439470300"
+    };
+
+    firebase.initializeApp(config);
+    var database = firebase.database();
+
+    database.ref().on("child_added", (childSnapshot, prevChildKey) => {
+      const locations = [...this.state.addressPoints, childSnapshot.val().newLocation];
+      this.setState({
+        addressPoints: locations,
+      });
+
+  });
   }
 
   handleLat = e => {
-    console.log('handled');
     this.setState({
-      currentLat: parseFloat(e.target.value)
+      currentLat: e.target.value
     });
-    console.log(this.state, 'state');
   }
   handleLong = e => {
-    console.log('handled');
     this.setState({
-      currentLong: parseFloat(e.target.value)
+      currentLong: e.target.value
     });
-    console.log(this.state, 'state');
   }
   handleIntensity = e => {
-    console.log('handled');
     this.setState({
-      currentIntensity: parseFloat(e.target.value)
+      currentIntensity: e.target.value
     });
-    console.log(this.state, 'state');
+  }
+  handleZip = e => {
+    this.setState({
+      currentZip: e.target.value
+    });
+  }
+  handleCustomer = e => {
+    this.setState({
+      newestCustomer: e.target.value
+    });
   }
 
   addLocation = e => {
     e.preventDefault();
-    const newLocation = [this.state.currentLat, this.state.currentLong, this.state.currentIntensity];
-    console.log(newLocation, 'new');
-    if (newLocation !== '') {
-      const locations = [...this.state.addressPoints, newLocation];
-      console.log(locations, 'locations');
+    axios.get('http://dev.virtualearth.net/REST/v1/Locations?countryRegion=US&postalCode=' + this.state.currentZip + '}&key=Aghhp9HLUJjhSewSb-Q-cf-b0Wy-_mkJ53RWq3iKfCBH2piEb60Konpo5aAGadfW').then(result => {
+      const coordinates = result.data.resourceSets[0].resources[0].geocodePoints[0].coordinates;
       this.setState({
-        addressPoints: locations,
+        currentLat: coordinates[0],
+        currentLong: coordinates[1]
+      });
+      const newLocation = [this.state.currentLat, this.state.currentLong, parseFloat(this.state.currentIntensity)];
+    if (newLocation !== '') {
+      var database = firebase.database();
+      database.ref().push({
+        newLocation: newLocation,
+        name: this.state.newestCustomer
+    });
+      this.setState({
         currentLat: '',
         currentLong: '',
         currentIntensity: ''
       });
-      console.log(this.state, 'the state');
-    }
+      M.toast({html: this.state.newestCustomer + ' ordered a ProPlus 36!'})
+    };
+    });
   }
   /**
    * Toggle limiting the address points to test behavior with refocusing/zooming when data points change
@@ -93,20 +129,22 @@ class MapExample extends React.Component {
     };
 
     return (
-      <div>
-        <Map center={[47.5902566, -122.2418204]} zoom={10}>
+      <div className="container">
+        <Map center={[0, 0]} zoom={1}>
           {!this.state.layerHidden &&
               <HeatmapLayer
                 fitBoundsOnLoad
-                fitBoundsOnUpdate
                 points={this.state.addressPoints}
                 longitudeExtractor={m => {
-                  console.log(m[1]);
-                  return m[1];
+                  return parseFloat(m[1]);
                 } }
-                latitudeExtractor={m => m[0]}
+                latitudeExtractor={m => {
+                  return parseFloat(m[0]);
+                }}
                 gradient={gradient}
-                intensityExtractor={m => m[2]}
+                intensityExtractor={m => {
+                  return m[2];
+                }}
                 radius={Number(this.state.radius)}
                 blur={Number(this.state.blur)}
                 max={Number.parseFloat(this.state.max)}
@@ -167,34 +205,6 @@ class MapExample extends React.Component {
           /> {this.state.max}
         </div>
         <br />
-        <div>
-        47.6205063
-        <br />
-        -122.3514661
-        <br />
-          Latitude:
-          <input
-            type="text"
-            placeholder="32.9376974"
-            onChange={this.handleLat}
-            value= {this.state.currentLat}
-          />
-          <button
-            onClick={this.addLocation}
-          >
-          NEW PLACE
-          </button>
-        </div>
-        <br />
-        <div>
-          Longitude:
-          <input
-            type="text"
-            placeholder="-96.996854"
-            onChange={this.handleLong}
-            value= {this.state.currentLong}
-          />
-        </div>
         <br />
         <div>
           Intensity:
@@ -205,6 +215,29 @@ class MapExample extends React.Component {
             value= {this.state.currentIntensity}
           />
         </div>
+        <div>
+          Zip Code:
+          <input
+            type="text"
+            placeholder="76226"
+            onChange={this.handleZip}
+            value= {this.state.currentZip}
+          />
+        </div>
+        <div>
+          Name:
+          <input
+            type="text"
+            placeholder="tictac"
+            onChange={this.handleCustomer}
+            value= {this.state.newestCustomer}
+          />
+        </div>
+        <button
+            onClick={this.addLocation}
+          >
+          NEW PLACE
+          </button>
       </div>
     );
   }

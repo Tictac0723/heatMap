@@ -224,6 +224,7 @@ export default withLeaflet(class HeatmapLayer extends MapLayer {
 
   fitBounds(): void {
     const points = this.props.points;
+    console.log(points, 'points');
     const lngs = map(points, this.props.longitudeExtractor);
     const lats = map(points, this.props.latitudeExtractor);
     const ne = { lng: max(lngs), lat: max(lats) };
@@ -232,7 +233,6 @@ export default withLeaflet(class HeatmapLayer extends MapLayer {
     if (shouldIgnoreLocation(ne) || shouldIgnoreLocation(sw)) {
       return;
     }
-
     this.props.leaflet.map.fitBounds(L.latLngBounds(L.latLng(sw), L.latLng(ne)));
   }
 
@@ -315,7 +315,6 @@ export default withLeaflet(class HeatmapLayer extends MapLayer {
     const offsetX = panePos.x % cellSize;
     const offsetY = panePos.y % cellSize;
     const getLat = this.props.latitudeExtractor;
-    console.log(getLat, 'getLat');
     const getLng = this.props.longitudeExtractor;
     const getIntensity = this.props.intensityExtractor;
 
