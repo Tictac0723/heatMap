@@ -2,6 +2,7 @@ import React from 'react';
 import { render } from 'react-dom';
 import { Map, TileLayer } from 'react-leaflet';
 import HeatmapLayer from '../src/HeatmapLayer';
+import L from 'leaflet';
 
 class MapExample extends React.Component {
 
@@ -19,6 +20,7 @@ class MapExample extends React.Component {
       currentLong: '',
       currentIntensity: '',
       currentZip: '',
+      currentCountry: '',
       newestCustomer: ''
     };
     this.handleLat = this.handleLat.bind(this);
@@ -37,6 +39,12 @@ class MapExample extends React.Component {
       messagingSenderId: "537439470300"
     };
 
+    var map = L.map('map', {
+      center: [0, 0],
+      zoom: 1
+  });
+  console.log(map);
+
     firebase.initializeApp(config);
     var database = firebase.database();
 
@@ -46,8 +54,16 @@ class MapExample extends React.Component {
         addressPoints: locations,
       });
 
-  });
+    });
+
+    database.ref().on("child_changed", (childSnapshot, prevChildKey) => {
+      M.toast({html: 'I am a toast!', displayLength: 30000})
+    });
   }
+
+  // shouldComponentUpdate() {
+  //   M.toast({html: 'I am a toast!', displayLength: 30000});
+  // }
 
   handleLat = e => {
     this.setState({
@@ -64,6 +80,11 @@ class MapExample extends React.Component {
       currentIntensity: e.target.value
     });
   }
+  handleCountry = e => {
+    this.setState({
+      currentCountry: e.target.value
+    });
+  }
   handleZip = e => {
     this.setState({
       currentZip: e.target.value
@@ -77,7 +98,7 @@ class MapExample extends React.Component {
 
   addLocation = e => {
     e.preventDefault();
-    axios.get('http://dev.virtualearth.net/REST/v1/Locations?countryRegion=US&postalCode=' + this.state.currentZip + '}&key=Aghhp9HLUJjhSewSb-Q-cf-b0Wy-_mkJ53RWq3iKfCBH2piEb60Konpo5aAGadfW').then(result => {
+    axios.get('http://dev.virtualearth.net/REST/v1/Locations?countryRegion=' + this.state.currentCountry + '&postalCode=' + this.state.currentZip + '}&key=Aghhp9HLUJjhSewSb-Q-cf-b0Wy-_mkJ53RWq3iKfCBH2piEb60Konpo5aAGadfW').then(result => {
       const coordinates = result.data.resourceSets[0].resources[0].geocodePoints[0].coordinates;
       this.setState({
         currentLat: coordinates[0],
@@ -89,6 +110,15 @@ class MapExample extends React.Component {
       database.ref().push({
         newLocation: newLocation,
         name: this.state.newestCustomer
+    });
+    // var map = new L.Map('map', {
+    //   zoomControl: false,
+    //   center: [this.state.currentLat, this.state.currentLong],
+    //   zoom: 15
+    // });
+    L.Map.flyTo([this.state.currentLat, this.state.currentLong], 10, {
+      animate: true,
+      duration: 2 // in seconds
     });
       this.setState({
         currentLat: '',
@@ -130,7 +160,8 @@ class MapExample extends React.Component {
 
     return (
       <div className="container">
-        <Map center={[0, 0]} zoom={1}>
+      <div id="map">
+        {/* <Map ref={(e) => { this.map = e; }} center={[0, 0]} zoom={1}>
           {!this.state.layerHidden &&
               <HeatmapLayer
                 fitBoundsOnLoad
@@ -154,7 +185,8 @@ class MapExample extends React.Component {
             url="http://{s}.tile.osm.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
           />
-        </Map>
+        </Map> */}
+        </div>
         <input
           type="button"
           value="Toggle Map"
@@ -213,6 +245,15 @@ class MapExample extends React.Component {
             placeholder="486"
             onChange={this.handleIntensity}
             value= {this.state.currentIntensity}
+          />
+        </div>
+        <div>
+          Country:
+          <input
+            type="text"
+            placeholder="US"
+            onChange={this.handleCountry}
+            value= {this.state.currentCountry}
           />
         </div>
         <div>
